@@ -1,4 +1,4 @@
-# Exercise 6.6 (FedProx Implementation for MNIST)
+# Exercise 6.4 (FedProx Implementation for MNIST)
 
 This repository contains an implementation of FedProx (Federated Proximal) algorithm for distributed machine learning on the MNIST dataset. FedProx is an extension of FedAvg that addresses the challenges of heterogeneous federated networks by adding a proximal term to the local objective.
 
@@ -7,32 +7,7 @@ This repository contains an implementation of FedProx (Federated Proximal) algor
 ### Basic Execution:
 
 ```bash
-python fedprox.py --mu 0.1 --clients 20 --rounds 100 --epochs 5
-```
-
-You can customize the following parameters:
-- `--mu`: Proximal term coefficient (default: 0.1)
-- `--clients`: Number of clients participating (default: 20)
-- `--rounds`: Number of communication rounds (default: 100)
-- `--epochs`: Number of local training epochs (default: 5)
-- `--batch_size`: Batch size for training (default: 32)
-- `--alpha`: Dirichlet concentration parameter (default: 0.5)
-
-### Example Commands:
-
-Run with default FedAvg (μ = 0):
-```bash
-python fedprox.py --mu 0
-```
-
-Run with high heterogeneity (low alpha):
-```bash
-python fedprox.py --mu 0.1 --alpha 0.1
-```
-
-Run with more communication rounds:
-```bash
-python fedprox.py --mu 0.1 --rounds 200
+python exercise_6.4.py 
 ```
 
 ## Overview
