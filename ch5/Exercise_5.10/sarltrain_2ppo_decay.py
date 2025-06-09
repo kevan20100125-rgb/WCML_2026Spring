@@ -21,7 +21,7 @@ width = 750/2
 height = 1298/2
 label = 'sarl_model_2ppo_decay'
 n_veh = 4
-n_neighbor = 2
+n_neighbor = 1
 n_RB = n_veh
 # Environment Parameters
 env = Environment_marl.Environ(down_lanes, up_lanes, left_lanes, right_lanes, width, height, n_veh, n_neighbor)
@@ -36,7 +36,7 @@ n_episode_test = 100  # test episodes
 ######################################################
 
 
-# For Actorb
+# Actor for band selection
 def get_state_b(env, idx=(0, 0), ind_episode=1.):
     """ Get state from the environment """
 
@@ -57,7 +57,7 @@ def get_state_b(env, idx=(0, 0), ind_episode=1.):
                            time_remaining, load_remaining, np.asarray([ind_episode])))
 
 
-# For Actorp
+# Actor for power selection
 def get_state_p(env, idx=(0, 0), ind_episode=1., band=0.):
     """ Get state from the environment """
 
@@ -84,7 +84,7 @@ band_transition = namedtuple('band_transition', ['state', 'band', 'band_prob', '
 power_transition = namedtuple('power_transition', ['state', 'power', 'power_prob', 'reward', 'next_state'])
 
 
-class Actorb(nn.Module):  # Actor for choosing band
+class Actorb(nn.Module):  
     def __init__(self):
         super(Actorb, self).__init__()
         self.fc_1 = nn.Linear(band_input_size, 500)
@@ -124,7 +124,7 @@ class Criticb(nn.Module):
         return x
 
 
-class Actorp(nn.Module):  # Actor for choosing power
+class Actorp(nn.Module):  
     def __init__(self):
         super(Actorp, self).__init__()
         self.fc_1 = nn.Linear(power_input_size, 500)
@@ -213,7 +213,7 @@ class Agentb:
             l_s_.append(torch.tensor([[s_]], dtype=torch.float))
         s = torch.cat(l_s, dim=0).to(device)
         a = torch.cat(l_a, dim=0).to(device)
-        a_prob = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
+        a_prob = torch.cat(l_a_p, dim=0).unsqueeze(1).to(device)
         r = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
         s_ = torch.cat(l_s_, dim=0).squeeze(1).to(device)
         self.data_buffer = []
@@ -320,7 +320,7 @@ class Agentp:
             l_s_.append(torch.tensor([[s_]], dtype=torch.float))
         s = torch.cat(l_s, dim=0).to(device)
         p = torch.cat(l_p, dim=0).to(device)
-        p_prob = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
+        p_prob = torch.cat(l_p_p, dim=0).unsqueeze(1).to(device)
         r = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
         s_ = torch.cat(l_s_, dim=0).squeeze(1).to(device)
         self.data_buffer = []
