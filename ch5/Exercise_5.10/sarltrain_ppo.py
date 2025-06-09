@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import Environment_marl
 import os
 from torch.distributions import Categorical
-from torch.distributions.normal import Normal
 from collections import namedtuple
 
 # Device configuration
@@ -28,7 +27,7 @@ n_RB = n_veh
 env = Environment_marl.Environ(down_lanes, up_lanes, left_lanes, right_lanes, width, height, n_veh, n_neighbor)
 env.new_random_game()   # initialize parameters in env
 
-n_episode = 5500
+n_episode = 6000
 n_step_per_episode = int(env.time_slow/env.time_fast)
 
 mini_batch_step = 8 * n_step_per_episode
@@ -58,19 +57,20 @@ def get_state(env, idx=(0, 0), ind_episode=1.):
 
 
 n_input_size = len(get_state(env=env))
-Transition = namedtuple('Transition', ['state', 'band', 'band_prob', 'power', 'power_prob', 'reward', 'next_state'])
+n_output_size = n_RB * len(env.V2V_power_dB_List_new)
+Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
 
 
-class Actorb(nn.Module):  # Actor for choosing band
+class Actor(nn.Module):
     def __init__(self):
-        super(Actorb, self).__init__()
+        super(Actor, self).__init__()
         self.fc_1 = nn.Linear(n_input_size, 500)
         self.fc_1.weight.data.normal_(0, 0.1)
         self.fc_2 = nn.Linear(500, 250)
         self.fc_2.weight.data.normal_(0, 0.1)
         self.fc_3 = nn.Linear(250, 120)
         self.fc_3.weight.data.normal_(0, 0.1)
-        self.fc_4 = nn.Linear(120, n_RB)
+        self.fc_4 = nn.Linear(120, n_output_size)
         self.fc_4.weight.data.normal_(0, 0.1)
 
     def forward(self, x):
@@ -81,30 +81,7 @@ class Actorb(nn.Module):  # Actor for choosing band
         return action_prob
 
 
-class Actorp(nn.Module):  # Actor for choosing power
-    def __init__(self):
-        super(Actorp, self).__init__()
-        self.fc_1 = nn.Linear(n_input_size, 500)
-        self.fc_1.weight.data.normal_(0, 0.1)
-        self.fc_2 = nn.Linear(500, 250)
-        self.fc_2.weight.data.normal_(0, 0.1)
-        self.fc_3 = nn.Linear(250, 120)
-        self.fc_3.weight.data.normal_(0, 0.1)
-        self.mu = nn.Linear(120, 1)
-        self.mu.weight.data.normal_(0, 0.1)
-        self.sigma = nn.Linear(120, 1)
-        self.sigma.weight.data.normal_(0, 0.1)
-
-    def forward(self, x):
-        x = F.relu(self.fc_1(x))
-        x = F.relu(self.fc_2(x))
-        x = F.relu(self.fc_3(x))
-        mu = torch.tanh(self.mu(x)) * 100 + 100
-        sigma = F.softplus(self.sigma(x)) + 0.05
-        return mu, sigma
-
-
-class Critic(nn.Module):   # Crtitc for judge the value function of the current state
+class Critic(nn.Module):
     def __init__(self):
         super(Critic, self).__init__()
         self.fc_1 = nn.Linear(n_input_size, 500)
@@ -126,55 +103,34 @@ class Critic(nn.Module):   # Crtitc for judge the value function of the current 
 
 class Agent:
     def __init__(self):
-        self.LAMBDA = 0.98
+        self.LAMBDA = 0.95
         self.discount = 0.99
         self.clip_param = 0.2
         self.max_grad_norm = 0.5
         self.K_epoch = 8
 
-        # Band
-        self.actor_band = Actorb().to(device)
-        self.old_actor_band = Actorb().to(device)  # Old policy network
-        self.old_actor_band.eval()
-        self.old_actor_band.load_state_dict(self.actor_band.state_dict())
-        self.actor_band_optimizer = torch.optim.Adam(self.actor_band.parameters(), lr=3e-5)
+        self.actor = Actor().to(device)
+        self.old_actor = Actor().to(device)  # Old policy network
+        self.old_actor.load_state_dict(self.actor.state_dict())
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=0.0001)
 
-        # Power
-        self.actor_power = Actorp().to(device)
-        self.old_actor_power = Actorp().to(device)
-        self.old_actor_power.eval()
-        self.old_actor_power.load_state_dict(self.actor_power.state_dict())
-        self.actor_power_optimizer = torch.optim.Adam(self.actor_power.parameters(), lr=3e-5)
-
-        # Critic
         self.critic = Critic().to(device)
         self.old_critic = Critic().to(device)  # Old value network
-        self.critic.eval()
         self.old_critic.load_state_dict(self.critic.state_dict())
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=0.0001)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=0.0003)
         self.loss_func = nn.MSELoss()
 
         self.data_buffer = []  # To store the experience
         self.counter = 0       # the number of experience tuple in data_buffer
 
-    def choose_band(self, s_t):
-        #  Return the band, and the probability to choose this band
+    def choose_action(self, s_t):
+        #  Return the action, and the probability to choose this action
         s_t = torch.tensor(s_t, dtype=torch.float32).unsqueeze(0).to(device)
         with torch.no_grad():
-            action_prob = self.old_actor_band(s_t)
+            action_prob = self.old_actor(s_t)
         c = Categorical(action_prob)
         action = c.sample()
         a_log_prob = action_prob[:, action.item()]
-        return action.item(), a_log_prob.item()
-
-    def choose_power(self, s_t):
-        #  Return the power, and the probability to choose this power
-        s_t = torch.tensor(s_t, dtype=torch.float32).unsqueeze(0).to(device)
-        with torch.no_grad():
-            mu, sigma = self.old_actor_power(s_t)
-        c = Normal(mu, sigma)
-        action = torch.clamp(c.sample(), 0, 200.0)   # power in [0, 200]mW
-        a_log_prob = torch.exp(c.log_prob(action))
         return action.item(), a_log_prob.item()
 
     def store_transition(self, transition):
@@ -182,32 +138,28 @@ class Agent:
         self.counter = self.counter + 1
 
     def sample(self):    # Sample all the data
-        l_s, l_b, l_b_p, l_p, l_p_p, l_r, l_s_ = [], [], [], [], [], [], []
+        l_s, l_a, l_a_p, l_r, l_s_ = [], [], [], [], []
         for item in self.data_buffer:
-            s, b, b_prob, p, p_prob, r, s_ = item
+            s, a, a_prob, r, s_ = item
             l_s.append(torch.tensor([s], dtype=torch.float))
-            l_b.append(torch.tensor([[b]], dtype=torch.long))
-            l_b_p.append(torch.tensor([[b_prob]], dtype=torch.float))
-            l_p.append(torch.tensor([[p]], dtype=torch.float))
-            l_p_p.append(torch.tensor([[p_prob]], dtype=torch.float))
+            l_a.append(torch.tensor([[a]], dtype=torch.long))
+            l_a_p.append(torch.tensor([[a_prob]], dtype=torch.float))
             l_r.append(torch.tensor([r], dtype=torch.float))
             l_s_.append(torch.tensor([[s_]], dtype=torch.float))
         s = torch.cat(l_s, dim=0).to(device)
-        b = torch.cat(l_b, dim=0).to(device)
-        b_prob = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
-        p = torch.cat(l_p, dim=0).to(device)
-        p_prob = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
+        a = torch.cat(l_a, dim=0).to(device)
+        a_prob = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
         r = torch.cat(l_r, dim=0).unsqueeze(1).to(device)
         s_ = torch.cat(l_s_, dim=0).squeeze(1).to(device)
         self.data_buffer = []
-        return s, b, b_prob, p, p_prob, r, s_
+        return s, a, a_prob, r, s_
 
     def update(self):
-        s, b, b_old_prob, p, p_old_prob, r, s_ = self.sample()
+        s, a, a_old_prob, r, s_ = self.sample()
         for _ in range(self.K_epoch):
             with torch.no_grad():
                 td_target = r + self.discount * self.old_critic(s_)
-                td_error = r + self.discount * self.old_critic(s_) - self.old_critic(s)  # use new policy or old policy?
+                td_error = r + self.discount * self.critic(s_) - self.critic(s)
                 td_error = td_error.detach().cpu().numpy()
                 advantage = []  # Advantage Function
                 adv = 0.0
@@ -217,44 +169,26 @@ class Agent:
                 advantage.reverse()
                 advantage = torch.tensor(advantage, dtype=torch.float).reshape(-1, 1).to(device)
                 # Trick: Normalization
-                advantage_band = (advantage - advantage.mean()) / (advantage.std() + 1e-7)
-                advantage_power = advantage_band
+                advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-7)
 
-            # Update actor for band
-            b_new_prob = self.actor_band(s).gather(1, b)
-            ratiob = b_new_prob / b_old_prob.detach()
-            surr1b = ratiob * advantage_band
-            surr2b = torch.clamp(ratiob, 1 - self.clip_param, 1 + self.clip_param) * advantage_band
+            a_new_prob = self.actor(s).gather(1, a)
+            ratio = a_new_prob / a_old_prob.detach()
+            surr1 = ratio * advantage
+            surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantage
 
-            actor_band_loss = - torch.min(surr1b, surr2b).mean()
-            self.actor_band_optimizer.zero_grad()
-            actor_band_loss.backward()
-            nn.utils.clip_grad_norm_(self.actor_band.parameters(), self.max_grad_norm)
-            self.actor_band_optimizer.step()
+            actor_loss = - torch.min(surr1, surr2).mean()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+            self.actor_optimizer.step()
 
-            # Update actor for power
-            mu, sigma = self.actor_power(s)
-            new_dis = Normal(mu, sigma)
-            p_new_prob = torch.exp(new_dis.log_prob(p))
-            ratiop = p_new_prob / p_old_prob.detach()
-            surr1p = ratiop * advantage_power
-            surr2p = torch.clamp(ratiop, 1 - self.clip_param, 1 + self.clip_param) * advantage_power
-
-            actor_power_loss = - torch.min(surr1p, surr2p).mean()
-            self.actor_power_optimizer.zero_grad()
-            actor_power_loss.backward()
-            nn.utils.clip_grad_norm_(self.actor_power.parameters(), self.max_grad_norm)
-            self.actor_power_optimizer.step()
-
-            # Update Critic
             critic_loss = self.loss_func(td_target.detach(), self.critic(s))
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
             nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
             self.critic_optimizer.step()
 
-        self.old_actor_band.load_state_dict(self.actor_band.state_dict())
-        self.old_actor_power.load_state_dict(self.actor_power.state_dict())
+        self.old_actor.load_state_dict(self.actor.state_dict())
         self.old_critic.load_state_dict(self.critic.state_dict())
 
     def save_models(self, model_path):
@@ -262,25 +196,23 @@ class Agent:
         model_path = os.path.join(current_dir, "model/" + model_path)
         if not os.path.exists(os.path.dirname(model_path)):
             os.makedirs(os.path.dirname(model_path))
-        torch.save(self.actor_band.state_dict(), model_path + '_ab.ckpt')
-        torch.save(self.actor_power.state_dict(), model_path + '_ap.ckpt')
+        torch.save(self.actor.state_dict(), model_path + '_a.ckpt')
         torch.save(self.critic.state_dict(), model_path + '_c.ckpt')
 
     def load_models(self, model_path):
         current_dir = os.path.dirname(os.path.realpath(__file__))
         model_path = os.path.join(current_dir, "model/" + model_path)
-        self.actor_band.load_state_dict(torch.load(model_path + '_ab.ckpt'))
-        self.actor_power.load_state_dict(torch.load(model_path + '_ap.ckpt'))
+        self.actor.load_state_dict(torch.load(model_path + '.ckpt'))
         self.critic.load_state_dict(torch.load(model_path + '_t.ckpt'))
 
 
 # --------------------------------------------------------------
 print("Initializing agent...")
+print(n_output_size)
 agent = Agent()
 # ------------------------- Training -----------------------------
 record_reward = np.zeros([n_episode, 1])
-action_all_band = np.zeros([n_veh, n_neighbor], dtype='int32')
-action_all_power = np.zeros([n_veh, n_neighbor], dtype='float64')
+action_all_training = np.zeros([n_veh, n_neighbor, 2], dtype='int32')
 time_step = 0
 for i_episode in range(n_episode):
     if i_episode % 100 == 0:
@@ -299,21 +231,19 @@ for i_episode in range(n_episode):
         i = int(np.floor(remainder / n_neighbor))
         j = remainder % n_neighbor
         state = get_state(env, [i, j], i_episode / (n_episode - 1))
-        band, b_prob = agent.choose_band(state)
-        power, p_prob = agent.choose_power(state)
-        action_all_band[i, j] = band  # chosen RB
-        action_all_power[i, j] = 10 * np.log10(power + 1e-10)  # power level
+        action, a_prob = agent.choose_action(state)
+        action_all_training[i, j, 0] = action % n_RB  # chosen RB
+        action_all_training[i, j, 1] = int(np.floor(action / n_RB))  # power level
 
-        action_band_temp = action_all_band.copy()
-        action_power_temp = action_all_power.copy()
-        train_reward = env.act_for_training(action_band_temp, action_power_temp)
+        action_temp = action_all_training.copy()
+        train_reward = env.act_for_training(action_temp)
         record_reward[i_episode] += train_reward
 
         env.renew_channels_fastfading()
-        env.Compute_Interference(action_band_temp, action_power_temp)
+        env.Compute_Interference(action_temp)
 
         state_new = get_state(env, [i, j], i_episode / (n_episode - 1))
-        trans = Transition(state, band, b_prob, power, p_prob, train_reward, state_new)
+        trans = Transition(state, action, a_prob, train_reward, state_new)
         agent.store_transition(transition=trans)
 
         # training this agent
