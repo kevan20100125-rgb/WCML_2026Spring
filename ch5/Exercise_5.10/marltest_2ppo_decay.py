@@ -19,10 +19,10 @@ left_lanes = [i/2.0 for i in [3.5/2, 3.5/2 + 3.5, 433+3.5/2, 433+3.5+3.5/2, 866+
 right_lanes = [i/2.0 for i in [433-3.5-3.5/2, 433-3.5/2, 866-3.5-3.5/2, 866-3.5/2, 1299-3.5-3.5/2, 1299-3.5/2]]
 width = 750/2
 height = 1298/2
-label = 'marl_model_4_2'
-label_sarl = 'sarl_model_hppo_4_2'
+label = 'marl_model_4_1'
+label_sarl = 'sarl_model_hppo_4_1'
 n_veh = 4
-n_neighbor = 2
+n_neighbor = 1
 n_RB = n_veh
 # Environment Parameters
 env = Environment_marl_test.Environ(down_lanes, up_lanes, left_lanes, right_lanes, width, height, n_veh, n_neighbor)
