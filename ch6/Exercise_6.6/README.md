@@ -24,7 +24,7 @@ Federated Averaging (FedAvg).
 |-----------|---------|
 | **Code #1** | Open **`fedavg_packet_loss_exercise.py`** and locate the `# YOUR CODE HERE` block inside **`unreliable_channel`**. Write code that drops each update with probability `loss_rate` (replace dropped items with `None` *or* filter them out—document your choice). |
 | **Code #2** | In **`client_train`**, complete the `# YOUR CODE HERE` block:<br>  • zero gradients;<br>  • forward pass;<br>  • compute NLL loss with `torch.nn.functional.nll_loss`;<br>  • `backward()` and `opt.step()`. |
-| **Run** | Execute:<br>`python fedavg_packet_loss_exercise.py` |
+| **Run** | Execute: `python exercise_6.6_starter.py` |
 | **Observe** | A figure **`packet_loss_impact.png`** is saved, showing *test accuracy* and *NLL loss* versus communication rounds for each loss rate. |
 
 > **Hint:** use `np.random.rand() > loss_rate` to decide whether to keep each
