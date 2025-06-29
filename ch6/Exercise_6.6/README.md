@@ -34,12 +34,12 @@ Federated Averaging (FedAvg).
 ## Configuration (default)
 
 ```python
-NUM_CLIENTS  = 100          # simulated devices
-COMM_ROUNDS  = 100          # global communication rounds
-LOCAL_EPOCHS = 5            # local SGD epochs per round
-BATCH_SIZE   = 32           # client mini-batch size
-ALPHA        = 0.5          # Dirichlet non-IID parameter
-LOSS_RATES   = [0.01, 0.05, 0.10]  # packet-loss probabilities
+NUM_CLIENTS   = 100                 # Total simulated clients
+COMM_ROUNDS   = 100                 # Global communication rounds
+LOCAL_EPOCHS  = 5                   # Local epochs per round
+BATCH_SIZE    = 32                  # Mini-batch size for client training
+ALPHA         = 0.5                 # Dirichlet concentration (smaller ⇒ more skew)
+LOSS_RATES    = [0.01, 0.05, 0.10]  # Packet-loss probabilities to test
 ```
 
 ## Expected Outcome
