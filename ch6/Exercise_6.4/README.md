@@ -50,6 +50,6 @@ where:
 
 | File | Purpose |
 |------|---------|
-| `exercise_6.4_starter.py` | Main training script (with TODO). |
-| `exercise_6.4_solution.py` | Completed main training script. |
+| `exercise_6.4_starter.py` | Starter script (with TODO). |
+| `exercise_6.4_solution.py` | Completed script. |
 | `fedprox_mu_impact.png` | Generated after you run the script. |
