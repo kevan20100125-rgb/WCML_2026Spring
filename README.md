@@ -1,5 +1,7 @@
-# wcmlbook
-Python code to reproduce most figures in the book Wireless Communications and Machine Learning written by Le Liang, Shi Jin, Hao Ye, and Geoffrey Ye Li and (to be) published by Cambridge University Press. 
+# Wireless Communications and Machine Learning
+Python code to reproduce figures in the book: 
+
+Le Liang, Shi Jin, Hao Ye, and Geoffrey Ye Li, [Wireless Communications and Machine Learning](https://www.cambridge.org/highereducation/books/wireless-communications-and-machine-learning/89C6FA4941FDB08A242870C4A56E4B2B#overview), Cambridge University Press, 2025. 
 ## Chapters
 
 | Chapter | Name                               | URL |
