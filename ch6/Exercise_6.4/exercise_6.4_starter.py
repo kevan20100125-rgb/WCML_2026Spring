@@ -1,21 +1,15 @@
 
 """
 Exercise 6.4: FedProx Implementation for MNIST Classification
-This program evaluates how different proximal-term coefficients (μ) influence
-federated learning convergence on the MNIST dataset with a non-IID Dirichlet
-split. The baseline algorithm is FedProx; performance is tracked across global
-communication rounds for multiple μ values.
 
-------------------------------------------------------------------
-Complete the missing section in `local_train` to calculate the FedProx
-objective.  Your goal is to combine the standard NLLLoss with the
-proximal-term penalty:
+This script simulates federated learning on a non-i.i.d. MNIST dataset
+(Dirichlet split, α=0.5). It compares the convergence behavior across
+different proximal-term coefficients (μ ∈ {0, 0.01, 0.1}).
 
-    L_i(w; w_t) = F_i(w) + (μ / 2) * ||w – w_t||²
-
-Once you have filled in the TODO block, the script should run end-to-end
-and produce a plot of test accuracy across communication rounds for
-different μ values.
+TODO:
+Complete the `local_train` function. You need to combine the standard
+NLLLoss with the FedProx proximal penalty:
+    Loss = NLLLoss + (μ / 2) * ||w - w_t||^2
 """
 
 import torch
@@ -86,37 +80,6 @@ def dirichlet_split(dataset, num_clients, alpha):
 
     return [Subset(dataset, idxs) for idxs in client_indices]
 
-
-# ────────────────────────  Local Training  ─────────────────────────────────── #
-def local_train(model, global_model, loader, mu):
-    """
-    Perform FedProx local training on one client.
-
-    Args:
-        model (nn.Module): Model initialized with global weights.
-        global_model (nn.Module): The current global model (for proximal term).
-        loader (DataLoader): Client's data loader.
-        mu (float): Proximal-term coefficient.
-    """
-    model.train()
-    opt = optim.SGD(model.parameters(), lr=0.01)
-    loss_fn = nn.NLLLoss()
-
-    for _ in range(LOCAL_EPOCHS):
-        for data, target in loader:
-            data, target = data.to(DEVICE), target.to(DEVICE)
-            opt.zero_grad()
-            output = model(data)
-            loss = loss_fn(output, target)
-
-            # FedProx proximal term
-            prox_term = 0.0
-            for w, w_glob in zip(model.parameters(), global_model.parameters()):
-                prox_term += ((w - w_glob.detach()) ** 2).sum()
-            loss += (mu / 2) * prox_term
-
-            loss.backward()
-            opt.step()
 
 # ────────────────────────  Local Training (TODO)  ────────────────────────── #
 def local_train(model, global_model, loader, mu):
@@ -201,10 +164,15 @@ def run_fedprox_experiment(mu):
             local_train(client_model, global_model, loader, mu)
             local_models.append(client_model)
 
-        # FedAvg aggregation
+        # Global aggregation
         gdict = global_model.state_dict()
+        total_samples = sum(len(client_datasets[cid]) for cid in range(NUM_CLIENTS))
         for k in gdict:
-            gdict[k] = torch.stack([m.state_dict()[k].float() for m in local_models]).mean(0)
+            weighted_sum = torch.zeros_like(gdict[k], dtype=torch.float)
+            for cid, local_model in enumerate(local_models):
+                weight = len(client_datasets[cid]) / total_samples
+                weighted_sum += local_model.state_dict()[k].float() * weight
+            gdict[k] = weighted_sum
         global_model.load_state_dict(gdict)
 
         # Evaluation

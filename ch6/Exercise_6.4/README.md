@@ -1,29 +1,14 @@
 # Exercise 6.4: FedProx Implementation for MNIST Classification
 
-Welcome! Your task is to finish an **incomplete implementation of FedProx** for
-federated MNIST classification. You will:
+This repository provides the starter code for Exercise 6.4. Your objective is to implement the **proximal term** of the FedProx algorithm and evaluate its performance on a non-i.i.d. MNIST dataset.
 
-1. **Fill in the missing loss definition** inside `local_train`
-   – combine the usual negative-log-likelihood (NLL) with FedProx’s proximal
-   penalty.
-
-2. **Run the experiment** for three $\mu$ values (`0, 0.01, 0.1`) and inspect the
-   convergence behaviour.
-
-## Background
-
-FedProx augments Federated Averaging (FedAvg) by adding a proximal term to the local objective function, which helps address issues arising from client heterogeneity. The local objective is defined as:
-
-$$
-L_i(w; w_t) = F_i(w) + \frac{\mu}{2}\left\\| w - w_t \right\\|^2,
-$$
-
-where:
-- $F_i(w)$ is the original loss function of client i.
-- $w_t$ is the global model parameters.
-- $\mu$ is the proximal term coefficient.
-
-
+## Experiment Setup
+The script is pre-configured with the specific parameters from the textbook:
+* **Clients $N$ :** 20
+* **Communication Rounds $T$ :** 100
+* **Local Epochs $E$ :** 5
+* **Non-i.i.d. Data:** Dirichlet distribution ($\alpha = 0.5$)
+* **Proximal Coefficients $\mu$ :** 0 (FedAvg baseline), 0.01, and 0.1
 
 ## What You Need to Do
 
@@ -35,25 +20,7 @@ where:
 
 
 > **Hint:** Re-use the pattern `((w - w_glob.detach()) ** 2).sum()` to compute
-> $\left\\| w - w_t \right\\|^2$ across all parameters.
-
-## Configuration (default)
-
-```python
-NUM_CLIENTS   = 20              # Total number of simulated clients
-COMM_ROUNDS   = 100             # Global communication (aggregation) rounds
-LOCAL_EPOCHS  = 5               # Local training epochs per round
-BATCH_SIZE    = 64              # Mini-batch size for client training
-ALPHA         = 0.5             # Dirichlet concentration parameter (smaller ⇒ more skew)
-MU_VALUES     = [0, 0.01, 0.1]  # Proximal-term coefficients to test
-```
-
-
-## Expected Outcome
-
-* **$\mu$ = 0** should reproduce FedAvg.
-* **Higher $\mu$** should smooth or slow convergence (exact behaviour depends on
-  data skew).
+> $||w - w_t||^2$ across all parameters.
 
 
 
@@ -62,5 +29,6 @@ MU_VALUES     = [0, 0.01, 0.1]  # Proximal-term coefficients to test
 | File | Purpose |
 |------|---------|
 | `exercise_6.4_starter.py` | Starter script (with TODO). |
-| `exercise_6.4_solution.py` | Completed script. |
 | `fedprox_mu_impact.png` | Generated after you run the script. |
+
+
