@@ -1,0 +1,147 @@
+#!/usr/bin/python
+from __future__ import division
+from __future__ import print_function
+from .train import load_trainable_vars, save_trainable_vars
+from .MIMO_detection import sample_gen
+from .utils import mkdir, _QPSK_Constellation, _16QAM_Constellation, _64QAM_Constellation
+from .MHGD_NET import MHGDNet
+from .FS_NET import FSNet
+import numpy as np
+import sys
+import tensorflow.compat.v1 as tf
+import scipy.io as sio
+
+tf.disable_v2_behavior()
+
+
+def train_fs_mhgd_net(test=False, trainset = None):
+    Mr, Nt, mu, SNR = trainset.m, trainset.n, trainset.mu, trainset.snr
+    lr, lr_decay, decay_steps, min_lr, maxit = trainset.lr, trainset.lr_decay, trainset.decay_steps, trainset.min_lr, trainset.maxit
+    vsample_size = trainset.vsample_size
+    total_batch, batch_size = trainset.total_batch, trainset.batch_size
+
+    savefile1 = trainset.savefile1
+    directory = './model/' + 'FS_' + str(Mr) + 'x' + str(Nt) + '_' + str(2 ** mu) + 'QAM_' + str(SNR) + 'dB'
+    mkdir(directory)
+    savefile1 = directory + '/' + savefile1
+    prob = trainset.prob
+    x_, y_, H_, sigma2_, bs_ = prob.x_, prob.y_, prob.H_, prob.sigma2_, prob.sample_size_
+    model1 = FSNet(trainset=trainset)
+    x_fs, loss_, mse = model1.build(x_, y_, H_, sigma2_, bs=bs_, test=test)  # transfer place holder and build the model
+
+    savefile2 = trainset.savefile2
+    directory = './model/' + 'MHGD_' + str(Mr) + 'x' + str(Nt) + '_' + str(2 ** mu) + 'QAM_' + str(SNR) + 'dB'
+    mkdir(directory)
+    savefile2 = directory + '/' + savefile2
+    model2 = MHGDNet(trainset=trainset)
+    xhat, loss_, mse = model2.build(x_, y_, H_, sigma2_,
+                                    bs=bs_, test=test, x_fs=x_fs)  # transfer place holder and build the model
+
+    savefile = trainset.savefile
+    directory = './model/' + 'FS_MHGD_' + str(Mr) + 'x' + str(Nt) + '_' + str(2 ** mu) + 'QAM_' + str(SNR) + 'dB'
+    # mkdir(directory)
+    savefile = directory + '/' + savefile
+
+    train, grads_ = [], []
+    global_step = tf.Variable(0, trainable=False)
+    lr_ = tf.train.exponential_decay(lr, global_step, decay_steps, lr_decay, name='lr')
+
+    if test is False:
+        grads_, _ = tf.clip_by_global_norm(tf.gradients(loss_, tf.trainable_variables()),
+                                           trainset.grad_clip)
+        if trainset.grad_clip_flag:
+            optimizer = tf.train.AdamOptimizer(lr_)
+            # grads_, _ = tf.clip_by_global_norm(tf.gradients(loss_, tf.trainable_variables()),
+            #                                    trainset.grad_clip)
+            if tf.trainable_variables():
+                train = optimizer.apply_gradients(zip(grads_, tf.trainable_variables()), global_step)
+        else:
+            if tf.trainable_variables():
+                train = tf.train.AdamOptimizer(lr_).minimize(loss_, global_step, var_list=tf.trainable_variables())
+                # train = []
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config)
+    sess.run(tf.global_variables_initializer())
+    state = load_trainable_vars(sess, savefile1)
+    done = state.get('done', [])
+    log = str(state.get('log', ''))
+    print(log)
+    state = load_trainable_vars(sess, savefile2)
+    done = state.get('done', [])
+    log = str(state.get('log', ''))
+    print(log)
+
+    if test:
+        return sess, xhat, mse
+
+    loss_history = []
+    save = {}  # for the best model
+    ivl = 5
+    # generate validation set
+    _, _, _, _, yval, xval, Hval, sigma2val = sample_gen(trainset, 1, vsample_size)
+    # sigma2val = Nt / Mr * 10 ** (-SNR / 10)
+    val_batch_size = vsample_size // total_batch
+
+    for i in range(maxit + 1):
+        if i % ivl == 0:  # validation:don't use optimizer
+            loss = 0.
+            for m in range(total_batch):
+                xbatch = xval[m * val_batch_size: (m + 1) * val_batch_size]
+                ybatch = yval[m * val_batch_size: (m + 1) * val_batch_size]
+                Hbatch = Hval[m * val_batch_size:(m + 1) * val_batch_size]
+                sigma2batch = sigma2val[m * val_batch_size:(m + 1) * val_batch_size]
+                loss_batch = sess.run(loss_, feed_dict={y_: ybatch,
+                                                        x_: xbatch, H_: Hbatch, sigma2_: sigma2batch,
+                                                        bs_: val_batch_size})
+                loss += loss_batch
+            if np.isnan(loss):
+                raise RuntimeError('loss is NaN')
+            loss_history = np.append(loss_history, loss)
+            loss_best = loss_history.min()
+            # for the best model
+            if loss == loss_best:
+                for v in tf.trainable_variables():
+                    save[str(v.name)] = sess.run(v)
+                    #
+            sys.stdout.write('\ri={i:<6d} loss={loss:.9f} (best={best:.9f})'
+                             .format(i=i, loss=loss, best=loss_best))
+            sys.stdout.flush()
+            if i % (100 * 1) == 0:
+                print('')
+
+        # generate trainset
+        y, x, H, sigma2, _, _, _, _ = sample_gen(trainset, batch_size * total_batch, 1)
+        # sigma2 = Nt / Mr * 10 ** (-SNR / 10)
+        for m in range(total_batch):
+            train_loss, _, grad = sess.run((loss_, train, grads_),
+                                           feed_dict={y_: y[m * batch_size:(m + 1) * batch_size],
+                                                      x_: x[m * batch_size:(m + 1) * batch_size],
+                                                      H_: H[m * batch_size:(m + 1) * batch_size],
+                                                      sigma2_: sigma2[m * batch_size:(m + 1) * batch_size],
+                                                      bs_: batch_size})
+            # if grad > 100.0:
+            #     pass
+
+    # for the best model----it's for the strange phenomenon
+    tv = dict([(str(v.name), v) for v in tf.trainable_variables()])
+    for k, d in save.items():
+        if k in tv:
+            sess.run(tf.assign(tv[k], d))
+            print('restoring ' + k)
+            # print('restoring ' + k + ' = ' + str(d))
+
+    log = log + '\nloss={loss:.9f} in {i} iterations   best={best:.9f} in {j} ' \
+                'iterations'.format(loss=loss, i=i, best=loss_best, j=loss_history.argmin() * ivl)
+
+    state['done'] = done
+    state['log'] = log
+    save_trainable_vars(sess, savefile, **state)
+
+    para = {}
+    for k, v in np.load(savefile).items():
+        para[k.replace(':', '').replace('/', '_')] = v
+    sio.savemat(savefile.replace('.npz', '.mat'), para)
+
+    return
