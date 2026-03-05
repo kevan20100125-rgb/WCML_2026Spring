@@ -27,6 +27,7 @@ This repository provides the starter code for Exercise 3.1. Your task is to use 
 | `DNN_Detection/Test.py` | Evaluates the trained models and calculates the final BER. |
 | `DNN_Detection/utils.py` | Mathematical formulations for OFDM (IDFT, CP addition, channel convolution). |
 | `H_dataset/` | Pre-generated dataset containing Rayleigh fading channel responses. |
+> **Hint:** The H_dataset can be downloaded from the following link: https://github.com/haoyye/OFDM_DNN.
 
 [15] H. Ye, G. Y. Li, and B.-H. Juang, “Power of deep learning for channel estimation and signal detection in OFDM systems,” *IEEE Wireless Communications Letters*,
 vol. 7, no. 1, pp. 114–117, Feb. 2018.
