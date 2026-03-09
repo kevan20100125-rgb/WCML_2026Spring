@@ -19,8 +19,7 @@ from itertools import count
 import os, time
 import numpy as np
 import matplotlib.pyplot as plt
-
-import gym
+import gymnasium as gym ###
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -36,11 +35,11 @@ render = False
 seed = 1
 log_interval = 10
 
-env = gym.make(env_name).unwrapped
+env = gym.make(env_name) ###
 num_state = env.observation_space.shape[0]
 num_action = env.action_space.n
 torch.manual_seed(seed)
-env.seed(seed)
+env.action_space.seed(seed) ###
 Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
 
 
@@ -90,16 +89,21 @@ class PPO():
             os.makedirs('../param/net_param')
             os.makedirs('../param/img')
 
+    ###
     def select_action(self, state):
         state = torch.from_numpy(state).float().unsqueeze(0)
         with torch.no_grad():
             action_prob = self.actor_net(state)
         c = Categorical(action_prob)
         action = c.sample()
-        return action.item(), action_prob[:, action.item()].item()
 
+        # return log probability instead of probability
+        action_log_prob = c.log_prob(action)
+
+        return action.item(), action_log_prob.item()
+    
     def get_value(self, state):
-        state = torch.from_numpy(state)
+        state = torch.from_numpy(state).float().unsqueeze(0)
         with torch.no_grad():
             value = self.critic_net(state)
         return value.item()
@@ -113,8 +117,8 @@ class PPO():
         self.counter += 1
 
     def update(self, i_ep):
-        state = torch.tensor([t.state for t in self.buffer], dtype=torch.float)
-        action = torch.tensor([t.action for t in self.buffer], dtype=torch.long).view(-1, 1)
+        state = torch.from_numpy(np.array([t.state for t in self.buffer])).float()
+        action = torch.tensor(np.array([t.action for t in self.buffer]), dtype=torch.long).view(-1, 1)
         reward = [t.reward for t in self.buffer]
         # update: don't need next_state
         # reward = torch.tensor([t.reward for t in self.buffer], dtype=torch.float).view(-1, 1)
@@ -137,34 +141,53 @@ class PPO():
                 V = self.critic_net(state[index])
                 delta = Gt_index - V
                 advantage = delta.detach()
-                # epoch iteration, PPO core!!!
-                action_prob = self.actor_net(state[index]).gather(1, action[index])  # new policy
 
                 # ─── YOUR CODE HERE ──────────────────────────────────────────── #
                 # calculate the importance ratio
 
+                new_dist = Categorical(self.actor_net(state[index]))
+                new_action_log_prob = new_dist.log_prob(action[index].squeeze()).view(-1, 1)
+                ratio = torch.exp(new_action_log_prob - old_action_log_prob[index])
+
                 # update actor network
+
+                surr1 = ratio * advantage
+                surr2 = torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * advantage
+                actor_loss = -torch.min(surr1, surr2).mean()
+
+                self.actor_optimizer.zero_grad()
+                actor_loss.backward()
+                nn.utils.clip_grad_norm_(self.actor_net.parameters(), self.max_grad_norm)
+                self.actor_optimizer.step()
 
                 # update critic network
 
-                pass
+                critic_loss = F.mse_loss(V, Gt_index)
+
+                self.critic_net_optimizer.zero_grad()
+                critic_loss.backward()
+                nn.utils.clip_grad_norm_(self.critic_net.parameters(), self.max_grad_norm)
+                self.critic_net_optimizer.step()
+
                 # ─────────────────────────────────────────────────────────────── #
 
                 self.training_step += 1
 
         del self.buffer[:]  # clear experience
 
-
 def main():
     agent = PPO()
-    for i_epoch in range(1000):
-        state = env.reset()
-        if render: env.render()
+    for i_epoch in range(1000): ###
+        if i_epoch == 0:
+            state, info = env.reset(seed=seed)
+        else:
+            state, info = env.reset()
 
         for t in count():
-            action, action_prob = agent.select_action(state)
-            next_state, reward, done, _ = env.step(action)
-            trans = Transition(state, action, action_prob, reward, next_state)
+            action, action_log_prob = agent.select_action(state)
+            next_state, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+            trans = Transition(state, action, action_log_prob, reward, next_state)
             if render: env.render()
             agent.store_transition(trans)
             state = next_state
