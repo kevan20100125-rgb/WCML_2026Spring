@@ -21,7 +21,6 @@ The target is to reproduce the MSE-vs-SNR curves in **Figure 2.9** for SNR value
 ├── main.py                  # Main entry point for training/testing across all SNRs
 ├── plot_figure.py           # Plot Figure 2.9 from saved .mat results
 ├── run_exercise_2_7.sh      # One-shot local runner for all six cases
-├── ex27_hpc.sh              # Example Slurm batch script for cluster execution
 ├── dnn_ce/                  # Saved DNN checkpoints (.npz)
 ├── tools/
 │   ├── networks.py          # DNN model definition and training logic
