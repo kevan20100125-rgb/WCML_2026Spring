@@ -61,17 +61,7 @@ The expected workflow is:
 
 A clean Conda environment is recommended.
 
-### Option A: minimal environment
-```bash
-conda create -n wcml-ex27 python=3.10 -y
-conda activate wcml-ex27
-
-python -m pip install --upgrade pip
-python -m pip install numpy scipy matplotlib
-python -m pip install tensorflow
-```
-
-### Option B: if you already use a project-wide environment name
+### Minimal environment
 ```bash
 conda create -n wcml python=3.10 -y
 conda activate wcml
