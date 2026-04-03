@@ -61,7 +61,17 @@ The expected workflow is:
 
 A clean Conda environment is recommended.
 
-### Minimal environment
+### Option A: minimal environment
+```bash
+conda create -n wcml-ex27 python=3.10 -y
+conda activate wcml-ex27
+
+python -m pip install --upgrade pip
+python -m pip install numpy scipy matplotlib
+python -m pip install tensorflow
+```
+
+### Option B: if you already use a project-wide environment name
 ```bash
 conda create -n wcml python=3.10 -y
 conda activate wcml
@@ -325,36 +335,7 @@ Figure_2_9_reproduced.pdf
 
 ---
 
-## 8. Cluster / Slurm Usage
-
-An example Slurm script is included as:
-
-```bash
-ex27_hpc.sh
-```
-
-Typical usage:
-
-```bash
-sbatch ex27_hpc.sh
-```
-
-You can override the environment name and training settings at submission time:
-
-```bash
-sbatch --export=ENV_NAME=wcml,EPOCHS=800,BATCH_SIZE=128,CLEAN=1 ex27_hpc.sh
-```
-
-The Slurm script will:
-
-- activate the Conda environment
-- print TensorFlow and GPU info
-- run the same six-stage workflow
-- optionally plot the final figure
-
----
-
-## 9. Common Failure Modes
+## 8. Common Failure Modes
 
 ### 1. `Checkpoint not found`
 Typical cause:
@@ -363,28 +344,14 @@ Typical cause:
 Fix:
 - train first, then test the same CP/No-CP setting.
 
-### 2. Only `DNN w/o CP` looks wrong
-Typical causes:
-- the no-CP training has not finished yet
-- the no-CP test is loading an old checkpoint
-- the no-CP train/test sequence was interrupted
-- old `.mat` files are still being plotted
-
-Recommended fix:
-```bash
-CLEAN=1 EPOCHS=... BATCH_SIZE=... bash run_exercise_2_7.sh
-```
-
-or rerun only the no-CP DNN train/test stages manually.
-
-### 3. TensorFlow cannot see the GPU
+### 2. TensorFlow cannot see the GPU
 Typical cause:
 - cluster or local CUDA/cuDNN/TensorFlow stack is not aligned.
 
 Fix:
 - keep the Python-side commands unchanged and resolve the TensorFlow installation for your machine first.
 
-### 4. Plot exists but one curve is stale
+### 3. Plot exists but one curve is stale
 Typical cause:
 - `plot_figure.py` is reading old `MSE_*.mat` files.
 
@@ -393,7 +360,7 @@ Fix:
 
 ---
 
-## 10. Reproducibility Notes
+## 9. Reproducibility Notes
 
 The code sets:
 
@@ -412,12 +379,12 @@ What matters for this exercise is the overall curve trend and whether the reprod
 
 ---
 
-## 11. Suggested Workflow
+## 10. Suggested Workflow
 
 For the cleanest end-to-end run:
 
 ```bash
-conda activate wcml-ex27
+conda activate wcml
 CLEAN=1 EPOCHS=800 BATCH_SIZE=128 bash run_exercise_2_7.sh
 ```
 
@@ -429,7 +396,7 @@ Then check:
 
 ---
 
-## 12. Reference
+## 11. Reference
 
 Original exercise source:
 - <https://github.com/le-liang/wcmlbook/tree/main/ch2/Exercise_2.7>
