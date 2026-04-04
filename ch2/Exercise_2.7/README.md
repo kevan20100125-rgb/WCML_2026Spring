@@ -66,7 +66,6 @@ The scripts are configured for the following Exercise 2.7 setting:
 
 The scripts are configured for the following Exercise 2.7 setting:
 
->>>>>>> 0c68dab (update)
 - **Number of subcarriers:** 64
 - **Pilot OFDM symbol:** 64 QPSK pilot symbols
 - **Data OFDM symbol:** 64-QAM
