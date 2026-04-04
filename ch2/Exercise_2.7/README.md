@@ -14,7 +14,6 @@ The target is to reproduce the MSE-vs-SNR curves in **Figure 2.9** for SNR value
 
 ---
 
-<<<<<<< HEAD
 ## 1. Repository Contents
 
 ```text
@@ -38,7 +37,6 @@ The target is to reproduce the MSE-vs-SNR curves in **Figure 2.9** for SNR value
 
 The scripts are configured for the following Exercise 2.7 setting:
 
-=======
 ## Visualization Results
 
 <img src="Figure_2_9_reproduced.png" width="300">
