@@ -39,7 +39,7 @@ The scripts are configured for the following Exercise 2.7 setting:
 
 ## Visualization Results
 
-<img src="Figure_2_9_reproduced.png" width="900">
+<img src="Figure_2_9_reproduced.png" width="600">
 
 ---
 
