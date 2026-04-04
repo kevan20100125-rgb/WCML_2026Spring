@@ -1,0 +1,116 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions / shared objects
+*.so
+
+# -----------------------------
+# Packaging / build
+# -----------------------------
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# -----------------------------
+# Virtual environments / Conda
+# -----------------------------
+.env
+.venv
+venv/
+ENV/
+env/
+conda-meta/
+.python-version
+
+# -----------------------------
+# Jupyter / IPython
+# -----------------------------
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# -----------------------------
+# Test / coverage / lint caches
+# -----------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# -----------------------------
+# Editors / OS files
+# -----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Logs
+# -----------------------------
+*.log
+logs/
+outputs/logs/
+slurm-*.out
+slurm-*.err
+
+# -----------------------------
+# Training checkpoints / model artifacts
+# Keep tracked reference checkpoints if you intentionally version them.
+# -----------------------------
+checkpoints/
+ckpt/
+*.ckpt
+*.h5
+*.keras
+*.pb
+
+# -----------------------------
+# Generated experiment results
+# -----------------------------
+results/
+figures/
+plots/
+tmp/
+temp/
+
+# Generated MATLAB / NumPy result dumps
+# MSE_*.mat
+# *.npz
+# *.npy
+
+# -----------------------------
+# Local archives
+# -----------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# -----------------------------
+# TensorBoard
+# -----------------------------
+events.out.tfevents.*
+tensorboard/

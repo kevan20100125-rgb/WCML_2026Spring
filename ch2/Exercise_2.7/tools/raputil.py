@@ -112,12 +112,21 @@ def Modulation_16(bits):
     return np.asarray(bit_mod).reshape((-1,))
 
 def Modulation_64(bits):
-    bit_r = bits.reshape((int(len(bits)/6), 6))
-    bit_mod = []
-    for i in range(int(len(bits)/6)):
-        bit_mod.append( list( _64QAM_mapping_table.get( tuple(bit_r[i]) ) ) )
-    return np.asarray(bit_mod).reshape((-1,))
+    bit_r = bits.reshape((int(len(bits) / 6), 6))
+    real = (2 * bit_r[:, 0] - 1) * (4 - (2 * bit_r[:, 1] - 1) * (2 - (2 * bit_r[:, 2] - 1)))
+    imag = (2 * bit_r[:, 3] - 1) * (4 - (2 * bit_r[:, 4] - 1) * (2 - (2 * bit_r[:, 5] - 1)))
+    return (real + 1j * imag) / np.sqrt(42)
 
+def _modulate_by_mu(bits, mu_local):
+    if mu_local == 2:
+        return Modulation(bits)
+    elif mu_local == 4:
+        return Modulation_16(bits)
+    elif mu_local == 6:
+        return Modulation_64(bits)
+    else:
+        raise ValueError('Unsupported modulation order: {}'.format(mu_local))
+     
 def IDFT(OFDM_data):
     return np.fft.ifft(OFDM_data)
 
@@ -185,30 +194,30 @@ def get_payload(equalized):
 def PS(bits):
     return bits.reshape((-1,))
 
-def ofdm_simulate(codeword, channelResponse,SNRdb, mu, CP_flag, K, P, CP, \
-    pilotValue,pilotCarriers, dataCarriers,Clipping_Flag,ce_flag=False):
-    payloadBits_per_OFDM = mu*len(dataCarriers) #with different pilots
+def ofdm_simulate(codeword, channelResponse, SNRdb, mu, CP_flag, K, P, CP, \
+    pilotValue, pilotCarriers, dataCarriers, Clipping_Flag, ce_flag=False, data_mu=6):
+    payloadBits_per_OFDM = mu * len(dataCarriers) #with different pilots
     # --- training inputs ----
     if P < K:
-        bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))    
+        bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
         if mu == 2:
             QAM = Modulation(bits)
         elif mu == 4:
             QAM = Modulation_16(bits)
-        else:     
+        else:
             QAM = Modulation_64(bits)
         OFDM_data = np.zeros(K, dtype=complex)
-        OFDM_data[pilotCarriers] = pilotValue  # allocate the pilot subcarriers 
+        OFDM_data[pilotCarriers] = pilotValue  # allocate the pilot subcarriers
         OFDM_data[dataCarriers] = QAM
     else:
         OFDM_data = pilotValue
-    
+
     # OFDM_time = IDFT(OFDM_data) #IDFT变换到时域
     OFDM_time = (FH @ OFDM_data.reshape((K,1))).reshape(-1,)
     OFDM_withCP = addCP(OFDM_time, CP, CP_flag, mu, K) #插入CP
     OFDM_TX = OFDM_withCP   #发送信号
     if Clipping_Flag:
-        OFDM_TX = Clipping(OFDM_TX,CR)  # add clipping  
+        OFDM_TX = Clipping(OFDM_TX,CR)  # add clipping
     OFDM_RX,_ = channel(OFDM_TX, channelResponse,SNRdb)   #通过信道后输出
     OFDM_RX_noCP = removeCP(OFDM_RX, CP,K)  #去除CP
 
@@ -217,30 +226,36 @@ def ofdm_simulate(codeword, channelResponse,SNRdb, mu, CP_flag, K, P, CP, \
 
     # ----- target inputs ---
     symbol = np.zeros(K, dtype=complex)
-    if mu == 2:
-        codeword_qam = Modulation(codeword)
-    elif mu == 4:
-        codeword_qam = Modulation_16(codeword)
-    else:     
-        codeword_qam = Modulation_64(codeword)
+    codeword_qam = _modulate_by_mu(codeword, data_mu)
     if len(codeword_qam) != K:
-        print ('length of code word is not equal to K, error !!')
+        print('length of code word is not equal to K, error !!')
     symbol = codeword_qam
     OFDM_data_codeword = symbol #步骤同上
     #OFDM_time_codeword = IDFT(OFDM_data_codeword)
     OFDM_time_codeword = (FH @ OFDM_data_codeword.reshape((K,1))).reshape(-1,)
     OFDM_withCP_codeword = addCP(OFDM_time_codeword, CP, CP_flag, mu, K)
     if Clipping_Flag:
-        OFDM_withCP_codeword = Clipping(OFDM_withCP_codeword,CR) # add clipping 
+        OFDM_withCP_codeword = Clipping(OFDM_withCP_codeword,CR) # add clipping
     OFDM_RX_codeword,sigma2 = channel(OFDM_withCP_codeword, channelResponse,SNRdb)
     OFDM_RX_noCP_codeword = removeCP(OFDM_RX_codeword,CP,K)
-    return np.concatenate((np.concatenate((np.real(OFDM_RX_noCP),np.imag(OFDM_RX_noCP))), np.concatenate((np.real(OFDM_RX_noCP_codeword),np.imag(OFDM_RX_noCP_codeword))))), sigma2 #sparse_mask
-
+    return np.concatenate((
+        np.concatenate((np.real(OFDM_RX_noCP),np.imag(OFDM_RX_noCP))),
+        np.concatenate((np.real(OFDM_RX_noCP_codeword),np.imag(OFDM_RX_noCP_codeword)))
+    )), sigma2 #sparse_mask
 
 ISI = np.zeros(K,dtype=complex)
 estimated_ISI = np.zeros((K,1),dtype=complex)
+
+
+def _prime_no_cp_isi(A, mu, K, prev_mu=6):
+    global ISI
+    bits_prev = np.random.binomial(n=1, p=0.5, size=(K * prev_mu, ))
+    prev_symbol = _modulate_by_mu(bits_prev, prev_mu)
+    ISI = A @ FH @ prev_symbol
+
+
 def ofdm_simulate_cp_free(codeword, H, A, FH, SNR, mu, K, P, \
-    pilotValue,pilotCarriers, dataCarriers, CE_flag=False):
+    pilotValue,pilotCarriers, dataCarriers, CE_flag=False, data_mu=6):
     global ISI
     payloadBits_per_OFDM = mu*len(dataCarriers) #with different pilots
     # --- training inputs ----
@@ -250,10 +265,10 @@ def ofdm_simulate_cp_free(codeword, H, A, FH, SNR, mu, K, P, \
             QAM = Modulation(bits)
         elif mu == 4:
             QAM = Modulation_16(bits)
-        else:     
+        else:
             QAM = Modulation_64(bits)
         OFDM_data = np.zeros(K, dtype=complex)
-        OFDM_data[pilotCarriers] = pilotValue  # allocate the pilot subcarriers 
+        OFDM_data[pilotCarriers] = pilotValue  # allocate the pilot subcarriers
         OFDM_data[dataCarriers] = QAM
     else:
         OFDM_data = pilotValue  #up
@@ -267,17 +282,13 @@ def ofdm_simulate_cp_free(codeword, H, A, FH, SNR, mu, K, P, \
     ISI = A @ FH @ OFDM_data # for next symbol
 
     if CE_flag:
-        return np.concatenate((np.real(yp),np.imag(yp)))
+        return np.concatenate((np.real(yp), np.imag(yp)))
+
     # ----- target inputs ---
     symbol = np.zeros(K, dtype=complex)
-    if mu == 2:
-        codeword_qam = Modulation(codeword)
-    elif mu == 4:
-        codeword_qam = Modulation_16(codeword)
-    else:     
-        codeword_qam = Modulation_64(codeword)
+    codeword_qam = _modulate_by_mu(codeword, data_mu)
     if len(codeword_qam) != K:
-        print ('length of code word is not equal to K, error !!')
+        print('length of code word is not equal to K, error !!')
     symbol = codeword_qam
     OFDM_data_codeword = symbol #步骤同上
     ys = (H-A) @ FH @ OFDM_data_codeword
@@ -289,8 +300,11 @@ def ofdm_simulate_cp_free(codeword, H, A, FH, SNR, mu, K, P, \
     ys = ys + ISI
     ISI = A @ FH @ OFDM_data_codeword # for next symbol
 
-    return np.concatenate((np.concatenate((np.real(yp),np.imag(yp))), np.concatenate((np.real(ys),np.imag(ys))))),\
-        sigma2, codeword_qam 
+    return np.concatenate((
+        np.concatenate((np.real(yp),np.imag(yp))),
+        np.concatenate((np.real(ys),np.imag(ys)))
+    )), sigma2, codeword_qam
+
 
 def LS_CE(Y,pilotValue,pilotCarriers,K,P,int_opt):
     index = np.arange(P)
@@ -305,10 +319,27 @@ def LS_CE(Y,pilotValue,pilotCarriers,K,P,int_opt):
 def MMSE_CE(Y,pilotValue,pilotCarriers,K,P,h,SNR):
     # Please fill in the blanks in the following codes
 
-    '# YOUR CODE HERE'
+    H_LS = Y[pilotCarriers] / pilotValue[:P]
 
-    W_MMSE = '# YOUR CODE HERE'
-    H_MMSE = '# YOUR CODE HERE'
+    h = h.reshape((-1,))
+    L = len(h)
+
+    pdp = np.abs(h) ** 2
+    pdp = pdp / np.maximum(np.sum(pdp), 1e-12)
+
+    k_idx = np.arange(K).reshape((-1, 1))
+    l_idx = np.arange(L).reshape((1, -1))
+    F_L = np.exp(-1j * 2 * np.pi * k_idx * l_idx / K)  # K x L
+
+    R_HH = F_L @ np.diag(pdp) @ np.conjugate(F_L).T
+    R_hp = R_HH[:, pilotCarriers]
+    R_pp = R_HH[np.ix_(pilotCarriers, pilotCarriers)]
+
+    noise_var = 10 ** (-SNR / 10.0)
+    reg = (noise_var + 1e-8) * np.eye(P, dtype=complex)
+
+    W_MMSE = R_hp @ np.linalg.inv(R_pp + reg)
+    H_MMSE = W_MMSE @ H_LS
 
     return H_MMSE,W_MMSE
 
@@ -436,40 +467,51 @@ def get_WMMSE(SNR, CP_flag=True):
     W_MMSE = np.concatenate(( np.concatenate((np.real(W_MMSE),-np.imag(W_MMSE)),axis=1),np.concatenate((np.imag(W_MMSE),np.real(W_MMSE)),axis=1) ))
     return W_MMSE 
 
-def sample_gen(bs, SNR = 20, training_flag=True, NoCP=False, CP_flag=True):
+def sample_gen(bs, SNR = 20, training_flag=True, NoCP=False, CP_flag=True, data_mu=6):
     if training_flag:
         index = np.random.choice(np.arange(train_size), size=bs)    #从1*train_size的array中随机选出bs个下标
         h_total = channel_train[index]
     else:
         index = np.random.choice(np.arange(test_size), size=bs)
         h_total = channel_test[index]
+
     H_samples = []
     H_labels = []
     Yp, Xp = [], []
+
     for h in h_total:
         #labels
         H_true = np.fft.fft(h,n=K)
         H,A = get_cyclic_and_cutoff_matrix(h)
+
         #channel estimation for the input samples
-        bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM, ))
+        bits = np.random.binomial(n=1, p=0.5, size=(K * data_mu, ))
         # pilotValue = Modulation(bits)
         if NoCP:
-            signal_output = ofdm_simulate_cp_free(bits, H, A, FH, SNR, mu, K, P, pilotValue, pilotCarriers, dataCarriers, CE_flag=True)
+            _prime_no_cp_isi(A, mu, K, prev_mu=data_mu)
+            signal_output = ofdm_simulate_cp_free(
+                bits, H, A, FH, SNR, mu, K, P, pilotValue, pilotCarriers, dataCarriers,
+                CE_flag=True, data_mu=data_mu
+            )
         else:
-            signal_output = ofdm_simulate(bits, h, SNR, mu, CP_flag, K, P, CP, pilotValue, pilotCarriers, dataCarriers,
-                                          Clipping_Flag, ce_flag=True)
+            signal_output = ofdm_simulate(
+                bits, h, SNR, mu, CP_flag, K, P, CP, pilotValue, pilotCarriers,
+                dataCarriers, Clipping_Flag, ce_flag=True, data_mu=data_mu
+            )
+
         yp_complex = signal_output[0:K] + 1j * signal_output[K:2*K]
         Yp_complex = F @ yp_complex
         #Yp_complex = DFT(yp_complex)
         H_LS = LS_CE(Yp_complex,pilotValue,pilotCarriers,K,P,interpolate_method) #input
+
         #convert complex into real
         H_true = np.concatenate((np.real(H_true),np.imag(H_true))) #1*2K
         H_LS = np.concatenate((np.real(H_LS),np.imag(H_LS)))    #1*2K
 
-        H_labels.append(H_true)   
+        H_labels.append(H_true)
         H_samples.append(H_LS)
-        # Xp.append(np.concatenate((np.real(pilotValue), np.imag(pilotValue))))
         Yp.append(np.concatenate((np.real(Yp_complex), np.imag(Yp_complex))))
+
     Xp = np.tile(np.concatenate((np.real(pilotValue), np.imag(pilotValue))), (bs, 1))  # (bs, 2K)
     return np.asarray(H_samples), np.asarray(H_labels), np.asarray(Yp), np.asarray(Xp)
 
@@ -541,23 +583,31 @@ def sample_gen_for_OAMP(bs, SNR, sess, input_holder, output, training_flag=True)
     return y_,x_,H_,sigma2_
 
 
-def test_ce(sess, input_holder, output, SNR, est_type, NoCP=False, CP_flag=True):
+def test_ce(sess, input_holder, output, SNR, est_type, NoCP=False, CP_flag=True, data_mu=6):
     num_trail = 1000
     L = 16  # length of channel impulse response
     downsampler = allCarriers[::K // L]
     MSE_T, MSE_F = 0., 0.
+
     for i in range(num_trail):
         index = np.random.choice(np.arange(test_size), size=1)
         h = channel_test[index].reshape((-1,))
         Htrue = np.fft.fft(h, n=K)
         H, A = get_cyclic_and_cutoff_matrix(h)
-        bits = np.random.binomial(n=1, p=0.5, size=(payloadBits_per_OFDM,))  # label
+
+        bits = np.random.binomial(n=1, p=0.5, size=(K * data_mu,))  # label
         if NoCP:
-            signal_output, sigma2, _ = ofdm_simulate_cp_free(bits, H, A, FH, SNR, mu, K, P, pilotValue, pilotCarriers,
-                                                             dataCarriers)
+            _prime_no_cp_isi(A, mu, K, prev_mu=data_mu)
+            signal_output, sigma2, _ = ofdm_simulate_cp_free(
+                bits, H, A, FH, SNR, mu, K, P, pilotValue, pilotCarriers,
+                dataCarriers, data_mu=data_mu
+            )
         else:
-            signal_output, sigma2 = ofdm_simulate(bits, h, SNR, mu, CP_flag, K, P, CP, pilotValue, pilotCarriers,
-                                                  dataCarriers, Clipping_Flag)
+            signal_output, sigma2 = ofdm_simulate(
+                bits, h, SNR, mu, CP_flag, K, P, CP, pilotValue, pilotCarriers,
+                dataCarriers, Clipping_Flag, data_mu=data_mu
+            )
+
         yp_complex = signal_output[0:K] + 1j * signal_output[K:2 * K]
         Yp_complex = F @ yp_complex
         # Yp_complex = np.fft.fft(yp_complex)
@@ -566,22 +616,15 @@ def test_ce(sess, input_holder, output, SNR, est_type, NoCP=False, CP_flag=True)
             estimated_H = LS_CE(Yp_complex, pilotValue, pilotCarriers, K, P, interpolate_method)
         elif est_type == 'mmse':
             estimated_H, _ = MMSE_CE(Yp_complex, pilotValue, pilotCarriers, K, P, h, SNR)
-        elif est_type == 'ce_net':
+        elif est_type == 'ce_net' or est_type == 'dnn':
             H_LS = LS_CE(Yp_complex, pilotValue, pilotCarriers, K, P, interpolate_method)
             # convert complex into real
-            H_LS = np.concatenate((np.real(H_LS), np.imag(H_LS))).reshape(1, 2 * K)  # 1*2K
+            H_LS = np.concatenate((np.real(H_LS), np.imag(H_LS))).reshape(1, 2 * K).astype(np.float32)  # 1*2K
             # get the CE-net's output
             estimated_H = sess.run(output, feed_dict={input_holder: H_LS}).reshape(-1, )
             estimated_H = estimated_H[:K] + 1j * estimated_H[K:2*K]
-        else:  # DNN for CE
-            input1 = np.concatenate((np.real(Yp_complex), np.imag(Yp_complex))).reshape(1, 2 * K)  # 1*2K
-            input2 = np.concatenate((np.real(pilotValue), np.imag(pilotValue))).reshape(1, 2 * K)  # 1*2K
-            # H_LS = LS_CE(Yp_complex, pilotValue, pilotCarriers, K, P, interpolate_method)
-            # # convert complex into real
-            # H_LS = np.concatenate((np.real(H_LS), np.imag(H_LS))).reshape(1, 2 * K)  # 1*2K
-            input = np.concatenate((input1, input2), axis=1)
-            estimated_H = sess.run(output, feed_dict={input_holder: input}).reshape(-1, )
-            estimated_H = estimated_H[:K] + 1j * estimated_H[K:2 * K]
+        else:
+            raise ValueError('Unsupported est_type: {}'.format(est_type))
 
         if est_type is None:
             Hpart = np.concatenate((np.real(Htrue), np.imag(Htrue))).reshape(1, 2 * K)[:, :2 * K // 8]
@@ -593,8 +636,10 @@ def test_ce(sess, input_holder, output, SNR, est_type, NoCP=False, CP_flag=True)
             MSE_F += np.sum(abs(estimated_H - Htrue) ** 2) / np.sum(abs(Htrue) ** 2)
             MSE_T += np.sum(abs(estimated_h - h) ** 2) / np.sum(abs(h) ** 2)
 
-        sys.stdout.write('\rMSE_T={mse_t:.6f} MSE_F={mse_f:.6f}'.format(mse_t=10 * np.log10(MSE_T / (i + 1)),
-                                                                        mse_f=10 * np.log10(MSE_F / (i + 1))))
+        sys.stdout.write('\rMSE_T={mse_t:.6f} MSE_F={mse_f:.6f}'.format(
+            mse_t=10 * np.log10(MSE_T / (i + 1)),
+            mse_f=10 * np.log10(MSE_F / (i + 1))
+        ))
         sys.stdout.flush()
 
     return MSE_T / num_trail, MSE_F / num_trail

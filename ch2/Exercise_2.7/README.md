@@ -14,6 +14,7 @@ The target is to reproduce the MSE-vs-SNR curves in **Figure 2.9** for SNR value
 
 ---
 
+<<<<<<< HEAD
 ## 1. Repository Contents
 
 ```text
@@ -37,6 +38,37 @@ The target is to reproduce the MSE-vs-SNR curves in **Figure 2.9** for SNR value
 
 The scripts are configured for the following Exercise 2.7 setting:
 
+=======
+## Visualization Results
+
+<img src="Figure_2_9_reproduced.png" width="300">
+
+---
+
+## 1. Repository Contents
+
+```text
+.
+├── main.py                  # Main entry point for training/testing across all SNRs
+├── plot_figure.py           # Plot Figure 2.9 from saved .mat results
+├── run_exercise_2_7.sh      # One-shot local runner for all six cases
+├── dnn_ce/                  # Saved DNN checkpoints (.npz)
+├── tools/
+│   ├── networks.py          # DNN model definition and training logic
+│   ├── raputil.py           # OFDM utilities, data generation, testing, LMMSE
+│   ├── train.py             # Save/load helpers for TensorFlow variables
+│   ├── channel_train.npy    # Channel dataset for training
+│   └── channel_test.npy     # Channel dataset for evaluation
+└── MSE_*.mat                # Saved MSE curves
+```
+
+---
+
+## 2. Problem Setup
+
+The scripts are configured for the following Exercise 2.7 setting:
+
+>>>>>>> 0c68dab (update)
 - **Number of subcarriers:** 64
 - **Pilot OFDM symbol:** 64 QPSK pilot symbols
 - **Data OFDM symbol:** 64-QAM
