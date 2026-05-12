@@ -1,0 +1,54 @@
+{
+  "args": {
+    "batch_size": 512,
+    "channel_root": "../H_dataset",
+    "channel_rows_per_file": 512,
+    "device": "auto",
+    "epochs": 200,
+    "force": true,
+    "hidden": [
+      500,
+      250,
+      120
+    ],
+    "learning_rate": 0.001,
+    "max_groups": 0,
+    "output_dir": "../outputs/ofdm_detection",
+    "overwrite_results": true,
+    "pilots": [
+      64
+    ],
+    "seed": 2026,
+    "single_hidden": [
+      1000,
+      500,
+      250
+    ],
+    "skip_baselines": false,
+    "snrs": [
+      5.0,
+      10.0,
+      15.0,
+      20.0,
+      25.0
+    ],
+    "task": "d",
+    "test_samples": 8192,
+    "train_samples": 100000
+  },
+  "ofdm": {
+    "clipping": false,
+    "clipping_ratio": 1.0,
+    "cp": 16,
+    "k": 64,
+    "with_cp": true
+  },
+  "test_channels": [
+    51200,
+    16
+  ],
+  "train_channels": [
+    153600,
+    16
+  ]
+}

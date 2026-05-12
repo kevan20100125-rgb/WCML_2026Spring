@@ -1,0 +1,56 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Large local datasets
+H_dataset/
+data/raw/
+datasets/
+
+# Trained model checkpoints
+*.pt
+*.pth
+*.ckpt
+outputs/**/models/
+outputs/**/models.bak/
+
+# Backup and review archives
+*.zip
+*.tar
+*.tar.gz
+review_pack_final/
+outputs/*backup*/
+
+# Logs and temporary outputs
+*.log
+logs/
+outputs/**/logs*/
+*.bak
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

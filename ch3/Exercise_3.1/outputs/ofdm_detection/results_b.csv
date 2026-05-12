@@ -1,0 +1,31 @@
+task,method,modulation,mode,pilots,snr_db,ber,train_samples,test_samples,epochs,notes
+b,ls,qpsk,traditional,64,5.0,0.14453411102294922,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,64,10.0,0.05390167236328125,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,64,15.0,0.018161773681640625,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,64,20.0,0.005766868591308594,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,64,25.0,0.0018358230590820312,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,8,5.0,0.16559219360351562,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,8,10.0,0.09429645538330078,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,8,15.0,0.06563186645507812,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,8,20.0,0.05416393280029297,0,8192,0,traditional baseline
+b,ls,qpsk,traditional,8,25.0,0.053038597106933594,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,64,5.0,0.08812141418457031,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,64,10.0,0.03125190734863281,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,64,15.0,0.010487556457519531,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,64,20.0,0.0033349990844726562,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,64,25.0,0.0010976791381835938,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,8,5.0,0.12691879272460938,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,8,10.0,0.05238628387451172,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,8,15.0,0.020630836486816406,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,8,20.0,0.008957862854003906,0,8192,0,traditional baseline
+b,lmmse,qpsk,traditional,8,25.0,0.005478858947753906,0,8192,0,traditional baseline
+b,fc_dnn,qpsk,eight,64,5.0,0.13667678833007812,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,64,10.0,0.061532020568847656,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,64,15.0,0.03011035919189453,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,64,20.0,0.017587661743164062,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,64,25.0,0.014028549194335938,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,8,5.0,0.18942546844482422,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,8,10.0,0.0884389877319336,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,8,15.0,0.046326637268066406,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,8,20.0,0.031716346740722656,60000,8192,120,full DNN output coverage
+b,fc_dnn,qpsk,eight,8,25.0,0.027627944946289062,60000,8192,120,full DNN output coverage

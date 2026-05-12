@@ -113,6 +113,7 @@ def PS(bits):
 '''
 
 def ofdm_simulate(codeword, channelResponse,SNRdb, mu, CP_flag, K, P, CP, pilotValue,pilotCarriers, dataCarriers,Clipping_Flag):  
+    CR = 1.0
     payloadBits_per_OFDM = mu*len(dataCarriers)
     # --- training inputs ----
     if P < K:
@@ -137,7 +138,7 @@ def ofdm_simulate(codeword, channelResponse,SNRdb, mu, CP_flag, K, P, CP, pilotV
     symbol = np.zeros(K, dtype=complex)
     codeword_qam = Modulation(codeword,mu)
     if len(codeword_qam) != K:
-    print ('length of code word is not equal to K, error !!')
+        print ('length of code word is not equal to K, error !!')
     symbol = codeword_qam
     OFDM_data_codeword = symbol
     OFDM_time_codeword = np.fft.ifft(OFDM_data_codeword)

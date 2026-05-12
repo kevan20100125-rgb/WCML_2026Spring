@@ -1,1 +1,0 @@
-The H_dataset can be downloaded from the following link: https://github.com/haoyye/OFDM_DNN.

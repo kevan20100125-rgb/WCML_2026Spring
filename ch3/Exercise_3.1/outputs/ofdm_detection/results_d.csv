@@ -1,0 +1,21 @@
+task,method,modulation,mode,pilots,snr_db,ber,train_samples,test_samples,epochs,notes
+d,ls,qpsk,traditional,64,5.0,0.14453411102294922,0,8192,0,traditional baseline
+d,ls,qpsk,traditional,64,10.0,0.05390167236328125,0,8192,0,traditional baseline
+d,ls,qpsk,traditional,64,15.0,0.018161773681640625,0,8192,0,traditional baseline
+d,ls,qpsk,traditional,64,20.0,0.005766868591308594,0,8192,0,traditional baseline
+d,ls,qpsk,traditional,64,25.0,0.0018358230590820312,0,8192,0,traditional baseline
+d,lmmse,qpsk,traditional,64,5.0,0.08812141418457031,0,8192,0,traditional baseline
+d,lmmse,qpsk,traditional,64,10.0,0.03125190734863281,0,8192,0,traditional baseline
+d,lmmse,qpsk,traditional,64,15.0,0.010487556457519531,0,8192,0,traditional baseline
+d,lmmse,qpsk,traditional,64,20.0,0.0033349990844726562,0,8192,0,traditional baseline
+d,lmmse,qpsk,traditional,64,25.0,0.0010976791381835938,0,8192,0,traditional baseline
+d,fc_dnn,qpsk,eight,64,5.0,0.13440322875976562,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,eight,64,10.0,0.05562305450439453,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,eight,64,15.0,0.023947715759277344,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,eight,64,20.0,0.012942314147949219,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,eight,64,25.0,0.009578704833984375,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,single,64,5.0,0.27340126037597656,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,single,64,10.0,0.2643880844116211,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,single,64,15.0,0.20304203033447266,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,single,64,20.0,0.1495189666748047,100000,8192,200,full DNN output coverage
+d,fc_dnn,qpsk,single,64,25.0,0.15257930755615234,100000,8192,200,full DNN output coverage
